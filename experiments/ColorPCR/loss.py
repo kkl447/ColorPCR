@@ -7,6 +7,16 @@ from geotransformer.modules.registration.metrics import isotropic_transform_erro
 from geotransformer.modules.ops.pairwise_distance import pairwise_distance
 
 
+def inverse_transform(transform):
+    inverse = torch.zeros_like(transform)
+    rotation = transform[:3, :3]
+    translation = transform[:3, 3]
+    inverse[:3, :3] = rotation.transpose(0, 1)
+    inverse[:3, 3] = -torch.matmul(rotation.transpose(0, 1), translation)
+    inverse[3, 3] = 1.0
+    return inverse
+
+
 class CoarseMatchingLoss(nn.Module):
     def __init__(self, cfg):
         super(CoarseMatchingLoss, self).__init__()
@@ -146,7 +156,7 @@ class Evaluator(nn.Module):
 
         rre, rte = isotropic_transform_error(transform, est_transform)
 
-        realignment_transform = torch.matmul(torch.inverse(transform), est_transform)
+        realignment_transform = torch.matmul(inverse_transform(transform), est_transform)
         realigned_src_points_f = apply_transform(src_points, realignment_transform)
         rmse = torch.linalg.norm(realigned_src_points_f - src_points, dim=1).mean()
         recall = torch.lt(rmse, self.acceptance_rmse).float()
