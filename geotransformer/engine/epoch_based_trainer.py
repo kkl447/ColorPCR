@@ -12,8 +12,6 @@ from geotransformer.utils.summary_board import SummaryBoard
 from geotransformer.utils.timer import Timer
 from geotransformer.utils.common import get_log_string
 
-th_pointN = 900
-
 class EpochBasedTrainer(BaseTrainer):
     def __init__(
         self,
@@ -36,6 +34,7 @@ class EpochBasedTrainer(BaseTrainer):
             grad_acc_steps=grad_acc_steps,
         )
         self.max_epoch = max_epoch
+        self.max_coarse_points = getattr(getattr(cfg, 'train', None), 'max_coarse_points', 900)
 
     def before_train_step(self, epoch, iteration, data_dict) -> None:
         pass
@@ -88,7 +87,13 @@ class EpochBasedTrainer(BaseTrainer):
         total_iterations = len(self.train_loader)
         skipped = 0
         for iteration, data_dict in enumerate(self.train_loader):
-            if data_dict['lengths'][3][0] > th_pointN or data_dict['lengths'][3][1] > th_pointN:
+            if (
+                self.max_coarse_points > 0
+                and (
+                    data_dict['lengths'][3][0] > self.max_coarse_points
+                    or data_dict['lengths'][3][1] > self.max_coarse_points
+                )
+            ):
                 print('''skipped {} : {}'''.format(skipped, data_dict['index']))
                 skipped = skipped + 1
                 continue
@@ -146,7 +151,13 @@ class EpochBasedTrainer(BaseTrainer):
         total_iterations = len(self.val_loader)
         pbar = tqdm.tqdm(enumerate(self.val_loader), total=total_iterations)
         for iteration, data_dict in pbar:
-            if data_dict['lengths'][3][0] > th_pointN or data_dict['lengths'][3][1] > th_pointN:
+            if (
+                self.max_coarse_points > 0
+                and (
+                    data_dict['lengths'][3][0] > self.max_coarse_points
+                    or data_dict['lengths'][3][1] > self.max_coarse_points
+                )
+            ):
                 print('''skipped {} : {}'''.format(1, data_dict['index']))
                 continue
             self.inner_iteration = iteration + 1

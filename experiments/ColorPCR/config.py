@@ -32,7 +32,21 @@ ensure_dir(_C.registration_dir)
 
 # data
 _C.data = edict()
-_C.data.dataset_root = '../../dataset'
+_C.data.dataset_type = os.environ.get('COLORPCR_DATASET_TYPE', 'hku_mars_rgb')
+_C.data.dataset_root = os.environ.get(
+    'HKU_RGB_DATASET_ROOT',
+    osp.abspath(
+        osp.join(
+            _C.root_dir,
+            '..',
+            'GeoTransformer',
+            'data',
+            'HKU_MARS',
+            'MARS_Dataset_v015_dynamic_s030_rgb',
+        )
+    ),
+)
+_C.data.metadata_dir = os.environ.get('HKU_METADATA_DIR', 'metadata_amtown_valtest')
 
 # train data
 _C.train = edict()
@@ -42,21 +56,23 @@ _C.train.point_limit = 30000
 _C.train.use_augmentation = True
 _C.train.augmentation_noise = 0.005
 _C.train.augmentation_rotation = 1.0
+_C.train.max_coarse_points = int(os.environ.get('COLORPCR_MAX_COARSE_POINTS', '0'))
 
 # test data
 _C.test = edict()
 _C.test.batch_size = 1
 _C.test.num_workers = 8
 _C.test.point_limit = None
+_C.test.max_coarse_points = int(os.environ.get('COLORPCR_MAX_COARSE_POINTS', '0'))
 
 # evaluation
 _C.eval = edict()
 _C.eval.acceptance_overlap = 0.0
-_C.eval.acceptance_radius = 0.1
+_C.eval.acceptance_radius = 1.0
 _C.eval.inlier_ratio_threshold = 0.05
-_C.eval.rmse_threshold = 0.2
-_C.eval.rre_threshold = 15.0
-_C.eval.rte_threshold = 0.3
+_C.eval.rmse_threshold = 2.0
+_C.eval.rre_threshold = 5.0
+_C.eval.rte_threshold = 2.0
 
 # ransac
 _C.ransac = edict()
@@ -76,9 +92,9 @@ _C.optim.grad_acc_steps = 1
 # model - backbone
 _C.backbone = edict()
 _C.backbone.num_stages = 4
-_C.backbone.init_voxel_size = 0.025
+_C.backbone.init_voxel_size = 0.30
 _C.backbone.kernel_size = 15
-_C.backbone.base_radius = 2.5
+_C.backbone.base_radius = 4.25
 _C.backbone.base_sigma = 2.0
 _C.backbone.init_radius = _C.backbone.base_radius * _C.backbone.init_voxel_size
 _C.backbone.init_sigma = _C.backbone.base_sigma * _C.backbone.init_voxel_size
@@ -89,7 +105,7 @@ _C.backbone.output_dim = 256
 
 # model - Global
 _C.model = edict()
-_C.model.ground_truth_matching_radius = 0.05
+_C.model.ground_truth_matching_radius = 0.6
 _C.model.num_points_in_patch = 64
 _C.model.num_sinkhorn_iterations = 100
 
@@ -107,7 +123,7 @@ _C.geotransformer.hidden_dim = 256
 _C.geotransformer.output_dim = 256
 _C.geotransformer.num_heads = 4
 _C.geotransformer.blocks = ['self', 'cross', 'self', 'cross', 'self', 'cross']
-_C.geotransformer.sigma_d = 0.2
+_C.geotransformer.sigma_d = 4.8
 _C.geotransformer.sigma_a = 15
 _C.geotransformer.sigma_hd = 0.1
 _C.geotransformer.angle_k = 3
@@ -115,8 +131,8 @@ _C.geotransformer.reduction_a = 'max'
 
 # model - Fine Matching
 _C.fine_matching = edict()
-_C.fine_matching.topk = 3
-_C.fine_matching.acceptance_radius = 0.1
+_C.fine_matching.topk = 2
+_C.fine_matching.acceptance_radius = 1.4
 _C.fine_matching.mutual = True
 _C.fine_matching.confidence_threshold = 0.05
 _C.fine_matching.use_dustbin = False
@@ -136,7 +152,7 @@ _C.coarse_loss.positive_overlap = 0.1
 
 # loss - Fine level
 _C.fine_loss = edict()
-_C.fine_loss.positive_radius = 0.05
+_C.fine_loss.positive_radius = 0.6
 
 # loss - Overall
 _C.loss = edict()
