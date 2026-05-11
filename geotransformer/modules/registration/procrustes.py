@@ -3,6 +3,14 @@ import torch.nn as nn
 import ipdb
 
 
+def _det3x3(matrices):
+    return (
+        matrices[:, 0, 0] * (matrices[:, 1, 1] * matrices[:, 2, 2] - matrices[:, 1, 2] * matrices[:, 2, 1])
+        - matrices[:, 0, 1] * (matrices[:, 1, 0] * matrices[:, 2, 2] - matrices[:, 1, 2] * matrices[:, 2, 0])
+        + matrices[:, 0, 2] * (matrices[:, 1, 0] * matrices[:, 2, 1] - matrices[:, 1, 1] * matrices[:, 2, 0])
+    )
+
+
 def weighted_procrustes(
     src_points,
     ref_points,
@@ -53,7 +61,7 @@ def weighted_procrustes(
     U, _, V = torch.svd(H.cpu())  # H = USV^T
     Ut, V = U.transpose(1, 2).cuda(), V.cuda()
     eye = torch.eye(3).unsqueeze(0).repeat(batch_size, 1, 1).cuda()
-    eye[:, -1, -1] = torch.sign(torch.det(V @ Ut))
+    eye[:, -1, -1] = torch.sign(_det3x3(V @ Ut))
     R = V @ eye @ Ut
 
     t = ref_centroid.permute(0, 2, 1) - R @ src_centroid.permute(0, 2, 1)
