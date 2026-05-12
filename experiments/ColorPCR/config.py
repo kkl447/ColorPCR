@@ -84,10 +84,10 @@ _C.ransac.num_iterations = 1000
 _C.optim = edict()
 _C.optim.lr = 1e-4
 _C.optim.lr_decay = 0.95
-_C.optim.lr_decay_steps = 1
+_C.optim.lr_decay_steps = 5
 _C.optim.weight_decay = 1e-6
 _C.optim.max_epoch = 30
-_C.optim.grad_acc_steps = 1
+_C.optim.grad_acc_steps = 5
 
 # model - backbone
 _C.backbone = edict()
@@ -119,7 +119,7 @@ _C.coarse_matching.dual_normalization = True
 # model - GeoTransformer
 _C.geotransformer = edict()
 _C.geotransformer.input_dim = 1024
-_C.geotransformer.hidden_dim = 256
+_C.geotransformer.hidden_dim = 128
 _C.geotransformer.output_dim = 256
 _C.geotransformer.num_heads = 4
 _C.geotransformer.blocks = ['self', 'cross', 'self', 'cross', 'self', 'cross']
@@ -157,7 +157,7 @@ _C.fine_loss.positive_radius = 0.6
 # loss - Overall
 _C.loss = edict()
 _C.loss.weight_coarse_loss = 1.0
-_C.loss.weight_fine_loss = 1.0
+_C.loss.weight_fine_loss = 1.5
 
 
 def make_cfg():
