@@ -1,8 +1,15 @@
-# ColorPCR：面向 HKU-MARS RGB 的彩色点云配准
+# ColorPCR：面向 HKU-MARS RGB 与 KITTI RGB 的彩色点云配准
 
-本仓库是 [ColorPCR](https://openaccess.thecvf.com/content/CVPR2024/html/Mu_ColorPCR_Color_Point_Cloud_Registration_with_Multi-Stage_Geometric-Color_Fusion_CVPR_2024_paper.html) 的 HKU-MARS RGB 适配版本。模型沿用 ColorPCR 的多阶段几何—颜色融合结构，在 KPConv-FPN 的多个尺度注入 HSV 信息，并在 superpoint matching 阶段使用 GeoColor 结构嵌入。
+本仓库是 [ColorPCR](https://openaccess.thecvf.com/content/CVPR2024/html/Mu_ColorPCR_Color_Point_Cloud_Registration_with_Multi-Stage_Geometric-Color_Fusion_CVPR_2024_paper.html) 的户外彩色点云适配版本。模型沿用 ColorPCR 的多阶段几何—颜色融合结构，在 KPConv-FPN 的多个尺度注入 HSV 信息，并在 superpoint matching 阶段使用 GeoColor 结构嵌入。
 
-当前公开入口仅包含 `experiments/ColorPCR` 下的 HKU-MARS RGB 训练、验证和测试流程。数据集、预训练权重及训练输出不包含在 Git 仓库中。
+当前公开两条复现主线：
+
+| 数据集 | 实验入口 | 用途 |
+| --- | --- | --- |
+| HKU-MARS RGB | `experiments/ColorPCR` | HKU-MARS 训练、验证与测试 |
+| KITTI RGB | `experiments/ColorPCR_kitti_rgb` | KITTI Odometry 训练、验证与测试 |
+
+数据集、预训练权重及训练输出不包含在 Git 仓库中。
 
 ## 方法简介
 
@@ -47,11 +54,21 @@ python setup.py build develop
 
 `setup.py build develop` 会编译点云 grid subsampling 和 radius neighbor search 扩展，因此需要可用的 C++/CUDA 编译环境。
 
-## 数据集
+## 数据格式
 
-### 数据来源
+两个实验入口均读取 `Nx6 float32` NumPy 数组：
 
-本实验使用 [MARS-LVIG（HKU-MARS）](https://mars.hku.hk/dataset.html) 中带有同步 LiDAR、RGB 图像和位姿信息的数据。请按照数据集官网的许可和引用要求下载原始数据。
+```text
+[x, y, z, r, g, b]
+```
+
+其中 RGB 已归一化至 `[0, 1]`。数据加载时在线转换为 HSV；模型输入特征仍为全 1，颜色通过显式 HSV 路径进入网络。数据通过环境变量指定，可放在 ColorPCR 仓库之外。
+
+## HKU-MARS RGB
+
+### 数据来源与划分
+
+HKU 实验使用 [MARS-LVIG（HKU-MARS）](https://mars.hku.hk/dataset.html) 中带有同步 LiDAR、RGB 图像和位姿信息的数据。请按照数据集官网的许可和引用要求下载原始数据。
 
 本仓库使用以下四个序列：
 
@@ -61,17 +78,9 @@ python setup.py build develop
 | val | `AMtown03` | 593 |
 | test | `AMtown03` | 1184 |
 
-处理后的每帧点云保存为 `Nx6 float32` NumPy 数组：
+### HKU 数据预处理
 
-```text
-[x, y, z, r, g, b]
-```
-
-其中 RGB 已归一化至 `[0, 1]`。数据加载时在线转换为 HSV；模型输入特征仍为全 1，颜色通过显式 HSV 路径进入网络。
-
-### 数据预处理
-
-HKU-MARS RGB 预处理工具位于配套的 [GeoTransformer 仓库](https://github.com/kkl447/GeoTransformer)中：
+HKU-MARS RGB 预处理工具位于配套的 [GeoTransformer 仓库](https://github.com/kkl447/GeoTransformer)：
 
 - [`pre_data_v015_dynamic_crop.py`](https://github.com/kkl447/GeoTransformer/blob/master/data/HKU_MARS/pre_data_v015_dynamic_crop.py)：动态裁剪与点云规模控制。
 - [`pre_data_v015_dynamic_crop_rgb.py`](https://github.com/kkl447/GeoTransformer/blob/master/data/HKU_MARS/pre_data_v015_dynamic_crop_rgb.py)：将 LiDAR 投影到同步图像并生成 XYZRGB 点云。
@@ -97,9 +106,7 @@ python get_pkl_v015_dynamic.py \
 
 默认预处理参数为：预下采样体素 `0.15 m`、模型体素 `0.30 m`、单帧最多 `30000` 点。metadata 使用最小双向 overlap `0.20`，并保存相对位姿和点云相对路径。
 
-### 必要目录结构
-
-训练所需的最小数据目录如下；`ply/` 可用于可视化，但不是训练必需项。
+训练所需的最小目录如下；`ply/` 可用于可视化，但不是训练必需项。
 
 ```text
 MARS_Dataset_v015_dynamic_s030_rgb/
@@ -117,15 +124,7 @@ MARS_Dataset_v015_dynamic_s030_rgb/
     └── get_pkl_v015_dynamic_config.json
 ```
 
-每个 metadata 条目至少包含：
-
-```text
-seq, frame0, frame1, pcd0, pcd1, transform, overlap
-```
-
-## 训练
-
-训练入口为 `experiments/ColorPCR/trainval.py`。数据集通过环境变量指定，不要求放在本仓库内，也不要求与 GeoTransformer 仓库位于同一目录。
+### HKU 训练
 
 ```bash
 cd experiments/ColorPCR
@@ -136,23 +135,7 @@ HKU_METADATA_DIR=metadata_amtown_valtest \
 python trainval.py
 ```
 
-默认配置为单卡 batch size 1、梯度累积 5 次、训练 90 个 epoch。训练日志、TensorBoard events 和 checkpoint 默认写入 `output/ColorPCR/`。
-
-多 GPU 训练可使用：
-
-```bash
-CUDA_VISIBLE_DEVICES=0,1 \
-HKU_RGB_DATASET_ROOT=/path/to/MARS_Dataset_v015_dynamic_s030_rgb \
-HKU_METADATA_DIR=metadata_amtown_valtest \
-python -m torch.distributed.launch \
-  --nproc_per_node=2 \
-  --master_port=29501 \
-  trainval.py
-```
-
-## 验证与测试
-
-预训练权重不存放在 Git 仓库中。下载或训练得到 checkpoint 后，将其路径传给 `test.py`：
+### HKU 验证与测试
 
 ```bash
 cd experiments/ColorPCR
@@ -169,39 +152,141 @@ HKU_METADATA_DIR=metadata_amtown_valtest \
 python eval_hku.py --benchmark=val
 ```
 
-测试集只需将两处 `val` 替换为 `test`：
+测试集将上述两处 `val` 替换为 `test`。
+
+## KITTI RGB
+
+### 数据来源与划分
+
+KITTI 实验使用 [KITTI Odometry Benchmark](https://www.cvlibs.net/datasets/kitti/eval_odometry.php) 的 Velodyne 点云、双目彩色图像、标定和位姿。请分别下载 odometry velodyne laser data、color data、calibration files 与 ground-truth poses，并遵守 KITTI 的许可要求。
+
+| 划分 | 序列 | 配准对数量 |
+| --- | --- | ---: |
+| train | `00`–`05` | 1242 |
+| val | `06`–`07` | 514 |
+| test | `08`–`10` | 1028 |
+
+RGB 由 `image_2` 和 `image_3` 投影到 LiDAR 点；同一点被两个相机覆盖时取颜色均值，未被任一相机覆盖的点默认移除。默认体素大小为 `0.30 m`。
+
+### KITTI 数据预处理
+
+预处理脚本同样位于配套的 GeoTransformer 仓库：
+
+- [`preprocess_kitti_rgb.py`](https://github.com/kkl447/GeoTransformer/blob/master/data/Kitti/preprocess_kitti_rgb.py)：生成 KITTI XYZRGB 点云。
+- [`get_pkl_rgb.py`](https://github.com/kkl447/GeoTransformer/blob/master/data/Kitti/get_pkl_rgb.py)：按照 `00`–`05` / `06`–`07` / `08`–`10` 生成 metadata。
+
+将官方文件整理为脚本所需的 `sequences/`、`color/` 和 `poses/` 目录后执行：
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 \
-HKU_RGB_DATASET_ROOT=/path/to/MARS_Dataset_v015_dynamic_s030_rgb \
-HKU_METADATA_DIR=metadata_amtown_valtest \
-python test.py \
-  --snapshot=../../weights/epoch-87.pth.tar \
-  --benchmark=test
+git clone https://github.com/kkl447/GeoTransformer.git
+cd GeoTransformer/data/Kitti
 
+python preprocess_kitti_rgb.py \
+  --input-root /path/to/Kitti \
+  --output-root /path/to/Kitti_rgb \
+  --seqs 00 01 02 03 04 05 06 07 08 09 10 \
+  --image both \
+  --from-raw-bin \
+  --voxel-size 0.3
+
+python get_pkl_rgb.py \
+  --base-dir /path/to/Kitti_rgb \
+  --source-kitti-root /path/to/Kitti \
+  --metadata-dir metadata
+```
+
+如果 `/path/to/Kitti/downsampled/<seq>/` 中已经存在下采样后的 `.npy` 点云，可去掉 `--from-raw-bin`。训练所需的最小输出结构为：
+
+```text
+Kitti_rgb/
+├── downsampled/
+│   ├── 00/
+│   │   ├── 000000.npy
+│   │   └── ...
+│   ├── 01/
+│   └── ...
+├── pose/
+│   ├── 00.txt
+│   └── ...
+└── metadata/
+    ├── train.pkl
+    ├── val.pkl
+    ├── test.pkl
+    └── get_pkl_rgb_config.json
+```
+
+### KITTI 训练
+
+```bash
+cd experiments/ColorPCR_kitti_rgb
+
+CUDA_VISIBLE_DEVICES=0 \
+KITTI_RGB_DATASET_ROOT=/path/to/Kitti_rgb \
+KITTI_METADATA_DIR=metadata \
+python trainval.py
+```
+
+### KITTI 验证与测试
+
+```bash
+cd experiments/ColorPCR_kitti_rgb
+
+CUDA_VISIBLE_DEVICES=0 \
+KITTI_RGB_DATASET_ROOT=/path/to/Kitti_rgb \
+KITTI_METADATA_DIR=metadata \
+python test.py \
+  --snapshot=../../weights/epoch-25-kitti-rgb.pth.tar \
+  --benchmark=val
+
+KITTI_RGB_DATASET_ROOT=/path/to/Kitti_rgb \
+KITTI_METADATA_DIR=metadata \
+python eval_hku.py --benchmark=val
+```
+
+`eval_hku.py` 是当前 HKU 与 KITTI 共用的位姿评估入口；文件名为兼容现有实验保留。测试集将上述两处 `val` 替换为 `test`。
+
+## 训练配置
+
+两个入口默认均使用单卡 batch size 1、梯度累积 5 次、训练 90 个 epoch。训练日志、TensorBoard events 和 checkpoint 分别写入：
+
+```text
+output/ColorPCR/
+output/ColorPCR_kitti_rgb/
+```
+
+以 HKU 为例，多 GPU 训练可使用：
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 \
 HKU_RGB_DATASET_ROOT=/path/to/MARS_Dataset_v015_dynamic_s030_rgb \
 HKU_METADATA_DIR=metadata_amtown_valtest \
-python eval_hku.py --benchmark=test
+python -m torch.distributed.launch \
+  --nproc_per_node=2 \
+  --master_port=29501 \
+  experiments/ColorPCR/trainval.py
 ```
 
 注册成功标准为 `RRE < 5 deg` 且 `RTE < 2 m`。
 
 ## 参考结果
 
-以下结果使用 `epoch-87.pth.tar`、`metadata_amtown_valtest` 和上述成功标准：
+HKU 使用 `epoch-87.pth.tar`，KITTI RGB 使用 `epoch-25-kitti-rgb.pth.tar`：
 
-| 划分 | RR | RRE | RTE | PIR | IR | RMSE |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| val | 1.000 | 0.491 | 0.663 | 0.841 | 0.457 | 0.385 |
-| test | 1.000 | 0.507 | 0.724 | 0.841 | 0.464 | 0.368 |
+| 数据集 | 划分 | RR | RRE | RTE | PIR | IR | RMSE |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| HKU-MARS RGB | val | 1.000 | 0.491 | 0.663 | 0.841 | 0.457 | 0.385 |
+| HKU-MARS RGB | test | 1.000 | 0.507 | 0.724 | 0.841 | 0.464 | 0.368 |
+| KITTI RGB | val | 0.940 | 0.628 | 0.817 | 0.417 | 0.322 | 0.910 |
+| KITTI RGB | test | 0.971 | 0.351 | 0.425 | 0.396 | 0.327 | 0.438 |
 
 由于训练包含随机采样和数据增强，不同硬件与软件版本下的数值可能略有波动。默认随机种子为 `7351`。
 
 ## 数据、权重与输出
 
-- 原始或处理后的 HKU-MARS 数据不上传到本 Git 仓库。
-- checkpoint 不进入 Git 历史；建议通过 GitHub Release 单独发布，并提供 SHA256。
+- 原始或处理后的 HKU-MARS、KITTI 数据不上传到本 Git 仓库。
+- checkpoint 不进入 Git 历史；建议通过 GitHub Release 单独发布并提供 SHA256。
 - `output/`、日志、TensorBoard events、测试特征和注册结果均由 `.gitignore` 排除。
+- Git 仓库只发布源码、配置、文档、依赖清单和原生扩展源文件。
 
 ## 引用
 
@@ -217,7 +302,7 @@ python eval_hku.py --benchmark=test
 }
 ```
 
-同时请按照 MARS-LVIG 官方页面的要求引用数据集论文。
+同时请按照 MARS-LVIG 与 KITTI 官方页面的要求引用相应数据集论文。
 
 ## 致谢
 
@@ -228,7 +313,8 @@ python eval_hku.py --benchmark=test
 - [PREDATOR](https://github.com/prs-eth/OverlapPredator)
 - [CoFiNet](https://github.com/haoyu94/Coarse-to-fine-correspondences)
 - [MARS-LVIG](https://mars.hku.hk/dataset.html)
+- [KITTI Vision Benchmark Suite](https://www.cvlibs.net/datasets/kitti/)
 
 ## 许可证
 
-代码遵循本仓库 [`LICENSE`](LICENSE) 中的 MIT License。数据集版权与许可归 MARS-LVIG 发布方所有，代码许可证不覆盖数据集。
+代码遵循本仓库 [`LICENSE`](LICENSE) 中的 MIT License。MARS-LVIG 与 KITTI 数据集的版权和许可归各自发布方所有，代码许可证不覆盖数据集。
