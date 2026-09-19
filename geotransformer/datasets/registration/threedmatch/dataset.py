@@ -13,7 +13,39 @@ from geotransformer.utils.pointcloud import (
     get_transform_from_rotation_translation,
 )
 from geotransformer.utils.registration import get_correspondences
-from skimage import color
+try:
+    from skimage import color
+except ModuleNotFoundError:
+    color = None
+
+
+def rgb_to_hsv(rgb):
+    if color is not None:
+        return color.rgb2hsv(rgb).astype(np.float32)
+
+    rgb = np.clip(rgb, 0.0, 1.0).astype(np.float32)
+    maxc = rgb.max(axis=1)
+    minc = rgb.min(axis=1)
+    delta = maxc - minc
+
+    hsv = np.zeros_like(rgb, dtype=np.float32)
+    hsv[:, 2] = maxc
+    nonzero = delta > 1e-12
+    hsv[nonzero, 1] = delta[nonzero] / np.maximum(maxc[nonzero], 1e-12)
+
+    r, g, b = rgb[:, 0], rgb[:, 1], rgb[:, 2]
+    safe_delta = np.maximum(delta, 1e-12)
+    rc = ((g - b) / safe_delta) % 6.0
+    gc = ((b - r) / safe_delta) + 2.0
+    bc = ((r - g) / safe_delta) + 4.0
+    r_max = nonzero & (maxc == r)
+    g_max = nonzero & (maxc == g)
+    b_max = nonzero & (maxc == b)
+    hsv[r_max, 0] = rc[r_max] / 6.0
+    hsv[g_max, 0] = gc[g_max] / 6.0
+    hsv[b_max, 0] = bc[b_max] / 6.0
+    hsv[:, 0] = hsv[:, 0] % 1.0
+    return hsv
 
 class ThreeDMatchPairDataset(torch.utils.data.Dataset):
     def __init__(
@@ -110,8 +142,8 @@ class ThreeDMatchPairDataset(torch.utils.data.Dataset):
         if ref.shape[1] == 6:
             ref_rgb = ref[:, 3:].astype(np.float32)
             src_rgb = src[:, 3:].astype(np.float32)
-            data_dict['ref_hsv'] = color.rgb2hsv(ref_rgb)
-            data_dict['src_hsv'] = color.rgb2hsv(src_rgb)
+            data_dict['ref_hsv'] = rgb_to_hsv(ref_rgb)
+            data_dict['src_hsv'] = rgb_to_hsv(src_rgb)
 
 
         # augmentation

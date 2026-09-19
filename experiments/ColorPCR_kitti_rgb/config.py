@@ -32,21 +32,20 @@ ensure_dir(_C.registration_dir)
 
 # data
 _C.data = edict()
-_C.data.dataset_type = os.environ.get('COLORPCR_DATASET_TYPE', 'hku_mars_rgb')
+_C.data.dataset_type = os.environ.get('COLORPCR_DATASET_TYPE', 'kitti_rgb')
 _C.data.dataset_root = os.environ.get(
-    'HKU_RGB_DATASET_ROOT',
+    'KITTI_RGB_DATASET_ROOT',
     osp.abspath(
         osp.join(
             _C.root_dir,
             '..',
             'GeoTransformer',
             'data',
-            'HKU_MARS',
-            'MARS_Dataset_v015_dynamic_s030_rgb',
+            'Kitti_rgb',
         )
     ),
 )
-_C.data.metadata_dir = os.environ.get('HKU_METADATA_DIR', 'metadata_amtown_valtest')
+_C.data.metadata_dir = os.environ.get('KITTI_METADATA_DIR', 'metadata')
 
 # train data
 _C.train = edict()

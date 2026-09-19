@@ -1,0 +1,58 @@
+# Python caches and tooling
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Native extensions and build artifacts
+*.so
+*.dylib
+*.dll
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.conda/
+
+# Training and evaluation outputs
+output/
+logs/
+events/
+features/
+registration/
+events.out.tfevents.*
+*.log
+
+# Model checkpoints and weights
+weights/
+*.pth
+*.pth.tar
+*.pt
+*.ckpt
+
+# Local datasets and generated data
+data/
+*.npy
+*.npz
+*.pkl
+
+# Editors and operating systems
+.idea/
+.vscode/
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~

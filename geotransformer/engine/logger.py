@@ -1,4 +1,5 @@
 import logging
+import os
 
 import coloredlogs
 
@@ -27,21 +28,22 @@ def create_logger(log_file=None):
 
 class Logger:
     def __init__(self, log_file=None, local_rank=-1):
+        self.summary_only = os.environ.get('GEOT_TEST_SUMMARY_ONLY') == '1'
         if local_rank == 0 or local_rank == -1:
             self.logger = create_logger(log_file=log_file)
         else:
             self.logger = None
 
     def debug(self, message):
-        if self.logger is not None:
+        if self.logger is not None and not self.summary_only:
             self.logger.debug(message)
 
     def info(self, message):
-        if self.logger is not None:
+        if self.logger is not None and not self.summary_only:
             self.logger.info(message)
 
     def warning(self, message):
-        if self.logger is not None:
+        if self.logger is not None and not self.summary_only:
             self.logger.warning(message)
 
     def error(self, message):

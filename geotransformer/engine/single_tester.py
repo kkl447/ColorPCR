@@ -1,5 +1,7 @@
 from typing import Dict
 
+import os
+
 import torch
 import ipdb
 from tqdm import tqdm
@@ -45,6 +47,7 @@ class SingleTester(BaseTester):
         summary_board = SummaryBoard(adaptive=True)
         timer = Timer()
         total_iterations = len(self.test_loader)
+        summary_only = os.environ.get('GEOT_TEST_SUMMARY_ONLY') == '1'
         pbar = tqdm(enumerate(self.test_loader), total=total_iterations)
         for iteration, data_dict in pbar:
             # on start
@@ -64,11 +67,18 @@ class SingleTester(BaseTester):
             # logging
             result_dict = release_cuda(result_dict)
             summary_board.update_from_result_dict(result_dict)
-            message = self.summary_string(self.iteration, data_dict, output_dict, result_dict)
-            message += f', {timer.tostring()}'
+            if summary_only:
+                message = f'testing {self.iteration}/{total_iterations}, {timer.tostring()}'
+            else:
+                message = self.summary_string(self.iteration, data_dict, output_dict, result_dict)
+                message += f', {timer.tostring()}'
             pbar.set_description(message)
             torch.cuda.empty_cache()
         self.after_test_epoch()
         summary_dict = summary_board.summary()
         message = get_log_string(result_dict=summary_dict, timer=timer)
         self.logger.critical(message)
+        summary_path = os.environ.get('GEOT_TEST_SUMMARY_PATH')
+        if summary_path:
+            with open(summary_path, 'a') as f:
+                f.write(message + chr(10))

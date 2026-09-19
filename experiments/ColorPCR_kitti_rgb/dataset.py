@@ -148,7 +148,7 @@ def _make_dataset(
     point_limit,
     use_augmentation=False,
 ):
-    if cfg.data.dataset_type == 'hku_mars_rgb':
+    if cfg.data.dataset_type in ('hku_mars_rgb', 'kitti_rgb'):
         return HKUMarsColorPairDataset(
             cfg.data.dataset_root,
             subset,

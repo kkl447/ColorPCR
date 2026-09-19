@@ -28,7 +28,12 @@ class BaseTester(abc.ABC):
         self.args = parser.parse_args()
 
         # logger
-        log_file = osp.join(cfg.log_dir, 'test-{}.log'.format(time.strftime('%Y%m%d-%H%M%S')))
+        write_log_file = True
+        if hasattr(cfg, 'mac') and hasattr(cfg.mac, 'write_log_file'):
+            write_log_file = bool(cfg.mac.write_log_file)
+        log_file = None
+        if write_log_file:
+            log_file = osp.join(cfg.log_dir, 'test-{}.log'.format(time.strftime('%Y%m%d-%H%M%S')))
         self.logger = Logger(log_file=log_file)
 
         # command executed
